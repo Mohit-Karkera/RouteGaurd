@@ -56,7 +56,7 @@ else:
 col1, col2 = st.columns([3, 1])
 with col1:
     st.markdown(
-        "### 🔵 **RouteGuard**&nbsp;&nbsp;"
+        "### 🔴 **RouteGuard**&nbsp;&nbsp;"
         "<span style='color:#777; font-size:14px; font-weight:normal'>"
         "adaptive network routing &middot; anomaly-aware path optimization</span>",
         unsafe_allow_html=True
