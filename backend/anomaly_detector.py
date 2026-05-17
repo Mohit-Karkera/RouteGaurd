@@ -162,15 +162,27 @@ def get_flag_scores() -> Dict[int, int]:
 
 def apply_penalties(G: nx.DiGraph) -> List[Tuple[int, int]]:
     """
-    Multiply edge latency by 10 for all edges adjacent to flagged nodes.
-    Returns list of penalised edges.
+    Set edge latency to PENALTY_LATENCY (fixed cap) for edges adjacent to
+    flagged nodes. Restores original latency when a node recovers.
+    Never compounds — cost cannot overflow across timesteps.
     """
+    PENALTY_LATENCY = 9999
     penalised = []
-    for node in _flagged_nodes:
-        for u, v in list(G.in_edges(node)) + list(G.out_edges(node)):
-            original = G.edges[u, v]["latency"]
-            G.edges[u, v]["latency"] = original * 10
+
+    for u, v, data in G.edges(data=True):
+        u_flagged = u in _flagged_nodes
+        v_flagged = v in _flagged_nodes
+
+        if u_flagged or v_flagged:
+            if "original_latency" not in data:
+                G.edges[u, v]["original_latency"] = data["latency"]
+            G.edges[u, v]["latency"] = PENALTY_LATENCY
             penalised.append((int(u), int(v)))
+        else:
+            if "original_latency" in data:
+                G.edges[u, v]["latency"] = data["original_latency"]
+                del G.edges[u, v]["original_latency"]
+
     return penalised
 
 
