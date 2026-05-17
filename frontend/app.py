@@ -3,6 +3,19 @@ import httpx
 import networkx as nx
 import plotly.graph_objects as go
 import pandas as pd
+import base64
+import os
+
+# ── Logo loader ───────────────────────────────────────────────────────────────
+def _logo_b64():
+    logo_path = os.path.join(os.path.dirname(__file__), "..", "RouteGaurd logo.png")
+    logo_path = os.path.normpath(logo_path)
+    if os.path.exists(logo_path):
+        with open(logo_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    return None
+
+_LOGO = _logo_b64()
 
 st.set_page_config(page_title="RouteGuard", layout="wide")
 
@@ -55,10 +68,18 @@ else:
 
 col1, col2 = st.columns([3, 1])
 with col1:
+    if _LOGO:
+        logo_html = (f"<img src='data:image/png;base64,{_LOGO}' "
+                     f"style='height:64px; width:auto; vertical-align:middle; margin-right:0px'>")
+    else:
+        logo_html = "🔵 "
     st.markdown(
-        "### 🔴 **RouteGuard**&nbsp;&nbsp;"
-        "<span style='color:#777; font-size:14px; font-weight:normal'>"
-        "adaptive network routing &middot; anomaly-aware path optimization</span>",
+        f"<div style='display:flex; align-items:center; padding-top:8px'>"
+        f"{logo_html}"
+        f"<span style='font-size:26px; font-weight:700; color:#111; margin-left:1px; margin-right:10px'>RouteGuard</span>"
+        f"<span style='color:#888; font-size:13px; font-weight:400'>"
+        f"adaptive network routing &middot; anomaly-aware path optimization</span>"
+        f"</div>",
         unsafe_allow_html=True
     )
 with col2:
