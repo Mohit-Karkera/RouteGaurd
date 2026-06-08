@@ -7,7 +7,7 @@ Stage 1 — Z-score thresholding      (traffic volume spike)
 Stage 2 — Betweenness centrality    (man-in-the-middle positioning)
 Stage 3 — Isolation Forest          (multivariate ML anomaly score)
 
-A node is FLAGGED when flag_score >= 2  (majority vote across stages).
+A node is FLAGGED when flag_score >= 3  (all three stages must agree).
 """
 
 from __future__ import annotations
@@ -37,10 +37,10 @@ _flagged_nodes: Set[int] = set()
 _iso_forest: IsolationForest | None = None
 
 # Thresholds (tunable)
-ZSCORE_THRESHOLD     = 2.5
+ZSCORE_THRESHOLD     = 3
 CENTRALITY_DELTA     = 0.10
 ISO_CONTAMINATION    = 0.05
-FLAG_THRESHOLD       = 2        # stages needed to flag a node
+FLAG_THRESHOLD       = 2     # ALL three stages must agree to flag a node
 
 
 # ── public API ────────────────────────────────────────────────────────────────

@@ -37,25 +37,38 @@ def node_color(status):
 
 # ── API helpers ───────────────────────────────────────────────────────────────
 def run_simulation(n_nodes, n_edges, seed, source, target, steps, inject_at, spike_nodes, multiplier):
-    with httpx.Client(timeout=60.0) as client:
-        r = client.post(f"{API_BASE}/graph/generate",
-                        json={"n_nodes": n_nodes, "n_edges": n_edges, "seed": seed})
-        if r.status_code != 200:
-            st.error(f"Graph generation failed: {r.text}"); return
-        client.post(f"{API_BASE}/anomaly/train")
-        res = client.post(f"{API_BASE}/anomaly/simulate", json={
-            "source": source, "target": target,
-            "steps": steps, "inject_spike_at": inject_at,
-            "spike_nodes": spike_nodes, "spike_multiplier": float(multiplier)
-        })
-        if res.status_code == 200:
-            st.session_state["sim_results"] = res.json()
-            st.session_state["sim_params"]  = {
-                "n_nodes": n_nodes, "n_edges": n_edges,
-                "seed": seed, "source": source, "target": target
-            }
-        else:
-            st.error(f"Simulation failed: {res.text}")
+    try:
+        with httpx.Client(timeout=120.0) as client:
+            # 1. Generate graph
+            r = client.post(f"{API_BASE}/graph/generate",
+                            json={"n_nodes": n_nodes, "n_edges": n_edges, "seed": seed})
+            if r.status_code != 200:
+                st.error(f"Graph generation failed ({r.status_code}): {r.text}")
+                return
+
+            # 2. Run simulation (backend handles reset+train internally)
+            res = client.post(f"{API_BASE}/anomaly/simulate", json={
+                "source"          : int(source),
+                "target"          : int(target),
+                "steps"           : int(steps),
+                "inject_spike_at" : int(inject_at),
+                "spike_nodes"     : [int(x) for x in spike_nodes],
+                "spike_multiplier": float(multiplier),
+            })
+
+            if res.status_code == 200:
+                st.session_state["sim_results"] = res.json()
+                st.session_state["sim_params"]  = {
+                    "n_nodes": n_nodes, "n_edges": n_edges,
+                    "seed": seed, "source": int(source), "target": int(target),
+                }
+                st.rerun()
+            else:
+                st.error(f"Simulation failed ({res.status_code}): {res.text}")
+    except httpx.TimeoutException:
+        st.error("Request timed out. Try fewer steps or a smaller graph.")
+    except httpx.ConnectError:
+        st.error("Cannot reach backend at http://localhost:8000 — is it running?")
 
 # ── Header ────────────────────────────────────────────────────────────────────
 if "sim_results" in st.session_state:

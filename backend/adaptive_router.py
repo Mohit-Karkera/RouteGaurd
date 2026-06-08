@@ -34,10 +34,19 @@ def thompson_select(candidate_paths):
     if not candidate_paths:
         return None
     
+    # Deduplicate candidate paths
+    unique_paths = []
+    seen = set()
+    for p in candidate_paths:
+        t_p = tuple(p)
+        if t_p not in seen:
+            seen.add(t_p)
+            unique_paths.append(p)
+            
     best_path = None
     best_score = -1.0
     
-    for path in candidate_paths:
+    for path in unique_paths:
         register_path(path)
         score = sample_path_score(path)
         if score > best_score:

@@ -27,8 +27,8 @@ import numpy as np
 
 import graph_utils as gu
 import anomaly_detector as ad
-import routing_engine as re
 import adaptive_router as ar
+import routing_engine as re
 import simulation as sim
 
 # ── app setup ─────────────────────────────────────────────────────────────────
@@ -36,7 +36,6 @@ import simulation as sim
 app = FastAPI(
     title="RouteGuard — Anomaly Detection API",
     description=(
-        "Partial execution of the RouteGuard DAA project. "
         "Three-stage anomaly detection: Z-score | Betweenness Centrality | Isolation Forest"
     ),
     version="1.0.0",
@@ -77,13 +76,12 @@ class StepRequest(BaseModel):
 
 
 class SimulateRequest(BaseModel):
-    source          : int   = Field(default=0,  description="Source node ID")
-    target          : int   = Field(default=10, description="Target node ID")
-    steps           : int   = Field(default=10, ge=1, le=100)
-    inject_spike_at : int   = Field(default=3,  description="Step number to inject spike")
+    steps           : int            = Field(default=20, ge=1, le=200)
+    inject_spike_at : int            = Field(default=5)
     spike_nodes     : Optional[List[int]] = None
-    spike_multiplier: float = Field(default=5.0)
-
+    spike_multiplier: float          = Field(default=8.0)
+    source          : int            = Field(default=0)
+    target          : int            = Field(default=10)
 
 # ── helper ────────────────────────────────────────────────────────────────────
 
@@ -228,27 +226,29 @@ def run_step(req: StepRequest = StepRequest()):
 
 @app.post("/anomaly/simulate", tags=["Anomaly Detection"])
 def simulate(req: SimulateRequest):
-    """
-    Run N timesteps automatically.
-    Injects a traffic spike at the specified step for demonstration.
-
-    Returns full simulation timeline + final state.
-    """
-    global _sim_results
+    global _step_count, _sim_results
     _require_graph()
-    if req.source not in _G or req.target not in _G:
-        raise HTTPException(status_code=400, detail="Source or target not in graph.")
 
-    _sim_results = sim.run_simulation(
-        _G,
-        req.source,
-        req.target,
-        req.steps,
-        req.inject_spike_at,
-        req.spike_nodes or [],
-        req.spike_multiplier
+    import simulation as sim
+
+    ad.reset_state(_G)
+    gu.add_trust_scores(_G)
+    ad.train_isolation_forest(_G)
+    ar.reset_registry()
+
+    result = sim.run_simulation(
+        G               = _G,
+        source          = req.source,
+        target          = req.target,
+        T               = req.steps,
+        inject_at       = req.inject_spike_at,
+        inject_nodes    = req.spike_nodes or [],
+        spike_multiplier= req.spike_multiplier,
     )
-    return _sim_results
+
+    _step_count   = req.steps
+    _sim_results  = result
+    return result
 
 @app.get("/anomaly/flagged", tags=["Anomaly Detection"])
 def get_flagged():
